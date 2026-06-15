@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /* ==========================================================================
-       Contact Form Submission Handler (Mock)
+       Contact Form Submission Handler (FormSubmit.co API Integration)
        ========================================================================== */
     const contactForm = document.getElementById('contact-form');
     const submitBtn = document.getElementById('submit-btn');
@@ -163,6 +163,15 @@ document.addEventListener('DOMContentLoaded', () => {
         contactForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
+            // Honeypot check to block bots
+            const honeyInput = contactForm.querySelector('input[name="_honey"]');
+            if (honeyInput && honeyInput.value) {
+                // Silently drop spam submission but act like it succeeded to the bot
+                showStatus('Thank you! Your message has been sent successfully.', 'success');
+                contactForm.reset();
+                return;
+            }
+
             // Basic fields gather
             const name = document.getElementById('name').value.trim();
             const email = document.getElementById('email').value.trim();
@@ -179,20 +188,47 @@ document.addEventListener('DOMContentLoaded', () => {
             const originalText = btnText.textContent;
             btnText.textContent = 'Sending...';
 
-            // Simulate form submission (e.g., API call)
-            setTimeout(() => {
+            // Send request to FormSubmit AJAX endpoint
+            fetch("https://formsubmit.co/ajax/kurubarakeshkumarrk@gmail.com", {
+                method: "POST",
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    email: email,
+                    message: message,
+                    _subject: `New Contact Form Message from ${name}`
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Network response was not ok.');
+                }
+            })
+            .then(data => {
                 // Success feedback
-                showStatus('Thank you! Your message has been sent successfully.', 'success');
+                showStatus('Thank you! Your message has been sent. Note: If this is your first submission, check your Gmail to activate the form.', 'success');
                 contactForm.reset();
+            })
+            .catch(error => {
+                console.error('Submission error:', error);
+                showStatus('Oops! Something went wrong while sending your message. Please try again.', 'error');
+            })
+            .finally(() => {
                 submitBtn.disabled = false;
                 btnText.textContent = originalText;
-            }, 1500);
+            });
         });
     }
 
     function showStatus(message, type) {
         formStatus.textContent = message;
         formStatus.className = 'form-status ' + type;
+        formStatus.style.display = 'block'; // Make sure the display property is reset
         
         // Auto-fade status after 5 seconds
         setTimeout(() => {
